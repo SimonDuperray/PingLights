@@ -7,7 +7,7 @@ if __name__ == "__main__":
     with open("../../config/configuration.json", "r") as f:
         configuration = json.load(f)
 
-    VIDEO_PATH = os.path.join(configuration["root_path"], configuration["video_filename"])
+    VIDEO_PATH = os.path.join(configuration["root_path"], configuration["video_filename"]) if configuration["video_filename"] != "" else 1
     OUTPUT_JSON = configuration["calibration_filename"]
 
     LARGEUR_ECRAN = configuration["largeur_ecran"]
