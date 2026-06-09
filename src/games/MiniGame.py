@@ -4,8 +4,8 @@ import random
 import pygame
 
 
-SERIAL_PORT = "COM3"
-BAUD_RATE = 9600
+SERIAL_PORT = "COM5"
+BAUD_RATE = 115200
 GAME_DURATION = 60
 NUM_ZONES = 6
 
@@ -34,13 +34,12 @@ class MiniGame:
 
     def send_zone(self, zone):
         if self.arduino:
-            self.arduino.write(f"ZONE:{zone}\n".encode())
+            self.arduino.write(f"Z{zone}\n".encode())
         print(f"Zone allumée : {zone}")
 
     def turn_off_all(self):
         if self.arduino:
-            for i in range(1, NUM_ZONES+1):
-                self.arduino.write(f"ZONE:{i+1}\n".encode())
+            self.arduino.write(f"OFF\n".encode())
         print("LEDs éteintes.")
 
     def pick_next_zone(self):

@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import os
 import time
@@ -7,10 +10,11 @@ from collections import deque
 from os.path import join
 import threading
 
-from src.games.MiniGame import MiniGame
+from games.MiniGame import MiniGame
 
 # == LECTURE DU FICHIER DE CONFIGURATION
-with open("../../config/configuration.json", "r") as f:
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+with open(os.path.join(ROOT, "config", "configuration.json"), "r") as f:
     configuration = json.load(f)
 
 AIRE_MIN = configuration["aire_min"]
