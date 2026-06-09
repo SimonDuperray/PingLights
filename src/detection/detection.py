@@ -220,22 +220,22 @@ if __name__ == "__main__":
                 # cela permet d'éviter des duplications de rebonds très rapides et superposés
                 if frame_count - dernier_rebond_frame > DELAI_MIN_FRAMES:
                     rebond_pos = positions[-2]
-                    rebonds.append(rebond_pos)
                     dernier_rebond_frame = frame_count
 
                     # calcul de la position absolue du rebond dans le repère de la table
                     x_cm, y_cm = pixels_vers_cm(rebond_pos[0], rebond_pos[1], H)
                     # détermination de la zone associée au rebond
                     zone = get_zone(x_cm, y_cm)
+                    rebonds.append((rebond_pos, zone))
                     print(f"Rebond détecté en zone {zone}")
 
         # == AFFICHAGE DES TRAJECTOIRES ET DES REBONDS
         for i in range(1, len(positions)):
             cv2.line(frame, positions[i - 1], positions[i], (255, 0, 0), 2)
 
-        for r in rebonds[-5:]:
+        for r, z in rebonds[-5:]:
             cv2.circle(frame, r, 8, (0, 0, 255), -1)
-            cv2.putText(frame, "REBOND", (r[0] + 10, r[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            cv2.putText(frame, f"REBOND#Z{z}", (r[0] + 10, r[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         # == AFFICHAGE DU LECTEUR VIDEO
         cv2.imshow("PingLights", frame)
