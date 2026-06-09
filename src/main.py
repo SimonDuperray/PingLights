@@ -126,9 +126,9 @@ if __name__ == "__main__":
                 return True
         return False
 
+    # == LECTURE DE LA VIDEO
     cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("PingLights", LARGEUR_ECRAN, HAUTEUR_ECRAN)
-    # == LECTURE DE LA VIDEO
     while True:
         ret, frame = cap.read()
         if not ret:

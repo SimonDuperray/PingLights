@@ -1,12 +1,23 @@
+import os
+
 import cv2
 import numpy as np
 import json
 
+from pandas.core import config_init
+from streamlit.elements.lib import dialog
 
 if __name__ == "__main__":
     # == CONFIGURATION
-    VIDEO_PATH = rf"C:\Users\simon\workspace\python\PingLights\resources\pov_rebond_normal_1.mp4"
-    OUTPUT_JSON = rf"C:\Users\simon\workspace\python\PingLights\config\calibration.json"
+    with open("../config/configuration.json", "r") as f:
+        configuration = json.load(f)
+
+    VIDEO_PATH = os.path.join(configuration["root_path"], configuration["video_filename"])
+    OUTPUT_JSON = configuration["calibration_filename"]
+
+    LARGEUR_ECRAN = configuration["largeur_ecran"]
+    HAUTEUR_ECRAN = configuration["hauteur_ecran"]
+
     COLOR = (0, 165, 255)
     HSV_BAS = np.array([0, 0, 200])
     HSV_HAUT = np.array([180, 80, 255])
@@ -57,77 +68,79 @@ if __name__ == "__main__":
 
         return display
 
-def mouse_callback(event, x, y, flags, param):
-    global polygone_courant, coins_table
+    def mouse_callback(event, x, y, flags, param):
+        global polygone_courant, coins_table
 
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if mode_actuel == MODE_ZONES_INTERDITES:
-            polygone_courant.append((x, y))
-        elif mode_actuel == MODES_COINS_TABLE:
-            if len(coins_table) < 4:
-                coins_table.append((x, y))
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if mode_actuel == MODE_ZONES_INTERDITES:
+                polygone_courant.append((x, y))
+            elif mode_actuel == MODES_COINS_TABLE:
+                if len(coins_table) < 4:
+                    coins_table.append((x, y))
 
-def sauvegarder():
-    data = {
-        "zones_interdites": zones_interdites,
-        "coins_table_pixels": coins_table,
-    }
-    with open(OUTPUT_JSON, "w") as f:
-        json.dump(data, f, indent=4)
-    print(f"Calibrage sauvegardé dans {OUTPUT_JSON}")
+    def sauvegarder():
+        data = {
+            "zones_interdites": zones_interdites,
+            "coins_table_pixels": coins_table,
+        }
+        with open(OUTPUT_JSON, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"Calibrage sauvegardé dans {OUTPUT_JSON}")
 
+    def resize_to_screen(frame):
+        h, w = frame.shape[:2]
+        scale = min(LARGEUR_ECRAN / w, HAUTEUR_ECRAN / h)
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        return cv2.resize(frame, (new_w, new_h))
 
-# == LANCEMENT
-cap = cv2.VideoCapture(VIDEO_PATH)
-ret, frame_ref = cap.read()
-cap.release()
+    # == LANCEMENT
+    cv2.namedWindow("Calibrage")
+    cap = cv2.VideoCapture(VIDEO_PATH)
+    ret, frame_ref = cap.read()
+    cap.release()
 
-if not ret:
-    print("Impossible de lire la vidéo")
-    exit()
+    if not ret:
+        print("Impossible de lire la vidéo")
+        exit()
 
-cv2.namedWindow("Calibrage")
-cv2.setMouseCallback("Calibrage", mouse_callback)
+    cv2.setMouseCallback("Calibrage", mouse_callback)
+    print("TAB: changer de mode | C: clore polygone en cours | N: nouvelle zone | S: sauvegarder | Q: quitter")
 
-print("TAB: changer de mode | C: clore polygone en cours | N: nouvelle zone | S: sauvegarder | Q: quitter")
+    while True:
+        hsv = cv2.cvtColor(frame_ref, cv2.COLOR_BGR2HSV)
+        masque = cv2.inRange(hsv, HSV_BAS, HSV_HAUT)
 
-while True:
-    # display = draw_overlay(frame_ref)
+        if afficher_masque:
+            display = cv2.cvtColor(masque, cv2.COLOR_GRAY2BGR)
+        else:
+            display = draw_overlay(frame_ref)
+        cv2.imshow("Calibrage", display)
 
-    hsv = cv2.cvtColor(frame_ref, cv2.COLOR_BGR2HSV)
-    masque = cv2.inRange(hsv, HSV_BAS, HSV_HAUT)
+        key = cv2.waitKey(1) & 0xFF
 
-    if afficher_masque:
-        display = cv2.cvtColor(masque, cv2.COLOR_GRAY2BGR)
-    else:
-        display = draw_overlay(frame_ref)
-
-    cv2.imshow("Calibrage", display)
-
-    key = cv2.waitKey(1) & 0xFF
-
-    if key == ord("q"):
-        break
-    elif key == ord("\t"): # TAB
-        mode_actuel = 1 - mode_actuel
-        print(f"Mode: {'Zones interdites' if mode_actuel == 0 else 'Coins table'}")
-    elif key == ord("c"):
-        print(len(zones_interdites))
-        if len(polygone_courant) >= 3:
-            zones_interdites.append(polygone_courant.copy())
-            print(f"Zone interdite {len(zones_interdites)} créée avec {len(polygone_courant)} points")
+        if key == ord("q"):
+            break
+        elif key == ord("\t"): # TAB
+            mode_actuel = 1 - mode_actuel
+            print(f"Mode: {'Zones interdites' if mode_actuel == 0 else 'Coins table'}")
+        elif key == ord("c"):
+            print(len(zones_interdites))
+            if len(polygone_courant) >= 3:
+                zones_interdites.append(polygone_courant.copy())
+                print(f"Zone interdite {len(zones_interdites)} créée avec {len(polygone_courant)} points")
+                polygone_courant = []
+            print(len(zones_interdites))
+        elif key == ord("n"):
             polygone_courant = []
-        print(len(zones_interdites))
-    elif key == ord("n"):
-        polygone_courant = []
-        print("Polygone annulé")
-    elif key == ord("z"):
-        if polygone_courant:
-            polygone_courant.pop()
-    elif key == ord("s"):
-        sauvegarder()
-    elif key == ord("m"):
-        afficher_masque = not afficher_masque
-        print(f"Masque HSV {'activé' if afficher_masque else 'désactivé'}.")
+            print("Polygone annulé")
+        elif key == ord("z"):
+            if polygone_courant:
+                polygone_courant.pop()
+        elif key == ord("s"):
+            sauvegarder()
+        elif key == ord("m"):
+            afficher_masque = not afficher_masque
+            print(f"Masque HSV {'activé' if afficher_masque else 'désactivé'}.")
 
-cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
