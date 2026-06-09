@@ -1,2 +1,4 @@
 .idea/
 resources/
+venv_ping_lights/
+config/configuration.json
