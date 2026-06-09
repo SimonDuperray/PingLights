@@ -1,5 +1,6 @@
 import json
 import os.path
+from dis import code_info
 
 import cv2
 import numpy as np
@@ -28,6 +29,8 @@ if __name__ == "__main__":
     LARGEUR_TABLE = configuration["largeur_table"]
     HAUTEUR_TABLE = configuration["hauteur_table"]
     CALIBRATION_FILENAME = configuration["calibration_filename"]
+    LARGEUR_ECRAN = configuration["largeur_ecran"]
+    HAUTEUR_ECRAN = configuration["hauteur_ecran"]
 
     # == CALIBRATION DOIT ETRE FAITE AUPARAVANT
     if not os.path.exists(CALIBRATION_FILENAME):
@@ -123,6 +126,8 @@ if __name__ == "__main__":
                 return True
         return False
 
+    cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("PingLights", LARGEUR_ECRAN, HAUTEUR_ECRAN)
     # == LECTURE DE LA VIDEO
     while True:
         ret, frame = cap.read()
@@ -230,7 +235,7 @@ if __name__ == "__main__":
             cv2.putText(frame, "REBOND", (r[0] + 10, r[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         # == AFFICHAGE DU LECTEUR VIDEO
-        cv2.imshow("Détection rebond", frame)
+        cv2.imshow("PingLights", frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

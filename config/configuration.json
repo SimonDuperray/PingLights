@@ -10,6 +10,8 @@
   "hsv_haut": [180, 80, 255],
   "largeur_table": 137.0,
   "hauteur_table": 76.25,
+  "largeur_ecran": 1280,
+  "hauteur_ecran": 720,
   "root_path": "C:\\Users\\simon\\workspace\\python\\PingLights\\resources",
   "video_filename": "pov1.mp4",
   "calibration_filename": "C:\\Users\\simon\\workspace\\python\\PingLights\\config\\calibration.json"
