@@ -1,0 +1,16 @@
+{
+  "aire_min": 100,
+  "aire_max": 1400,
+  "circularite_min": 0.3,
+  "taille_historique": 10,
+  "seuil_rebond": 5,
+  "max_deplacement": 10000,
+  "delai_min_frames": 30,
+  "hsv_bas": [0, 0, 200],
+  "hsv_haut": [180, 80, 255],
+  "largeur_table": 137.0,
+  "hauteur_table": 76.25,
+  "root_path": "C:\\Users\\simon\\workspace\\python\\PingLights\\resources",
+  "video_filename": "pov1.mp4",
+  "calibration_filename": "C:\\Users\\simon\\workspace\\python\\PingLights\\config\\calibration.json"
+}
