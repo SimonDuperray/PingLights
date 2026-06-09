@@ -1,6 +1,5 @@
 import json
 import os.path
-from dis import code_info
 
 import cv2
 import numpy as np

@@ -4,8 +4,6 @@ import cv2
 import numpy as np
 import json
 
-from pandas.core import config_init
-from streamlit.elements.lib import dialog
 
 if __name__ == "__main__":
     # == CONFIGURATION
