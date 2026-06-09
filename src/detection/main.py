@@ -9,7 +9,7 @@ from os.path import join
 
 if __name__ == "__main__":
     # == LECTURE DU FICHIER DE CONFIGURATION
-    with open("../config/configuration.json", "r") as f:
+    with open("../../config/configuration.json", "r") as f:
         configuration = json.load(f)
 
 

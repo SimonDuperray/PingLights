@@ -4,7 +4,7 @@ import numpy as np
 import json
 
 if __name__ == "__main__":
-    with open("../config/configuration.json", "r") as f:
+    with open("../../config/configuration.json", "r") as f:
         configuration = json.load(f)
 
     VIDEO_PATH = os.path.join(configuration["root_path"], configuration["video_filename"])
