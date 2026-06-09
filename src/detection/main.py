@@ -1,5 +1,6 @@
 import json
 import os.path
+import time
 
 import cv2
 import numpy as np
@@ -11,7 +12,6 @@ if __name__ == "__main__":
     # == LECTURE DU FICHIER DE CONFIGURATION
     with open("../../config/configuration.json", "r") as f:
         configuration = json.load(f)
-
 
     # == RECUPERATION DES PARAMETRES
     AIRE_MIN = configuration["aire_min"]
@@ -36,7 +36,6 @@ if __name__ == "__main__":
         print("Veuillez effectuer la calibration avant de lancer ce script.")
         exit()
 
-
     # == LECTURE DES ZONES INTERDITES ET DE LA POSITION DE LA TABLE
     with open(CALIBRATION_FILENAME, "r") as f:
         calibration_data = json.load(f)
@@ -50,13 +49,6 @@ if __name__ == "__main__":
     # ==
     HSV_BAS = np.array([HSV_BAS[0], HSV_BAS[1], HSV_BAS[2]])
     HSV_HAUT = np.array([HSV_HAUT[0], HSV_HAUT[1], HSV_HAUT[2]])
-    # ==
-    COINS_TABLE_REELS = np.array([
-        [0, 0],
-        [LARGEUR_TABLE, 0],
-        [LARGEUR_TABLE, HAUTEUR_TABLE],
-        [0, HAUTEUR_TABLE]
-    ], dtype=np.float32)
     # ==
     COL_WIDTH = LARGEUR_TABLE / 3
     ROW_HEIGHT = HAUTEUR_TABLE / 2
@@ -79,8 +71,15 @@ if __name__ == "__main__":
 
 
     # == LANCEMENT DE LA VIDEO
-    video = join(ROOT_PATH, VIDEO_FILENAME) if VIDEO_FILENAME != "" else 0
-    cap = cv2.VideoCapture(video)
+    if VIDEO_FILENAME == "":
+        cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    else:
+        cap = cv2.VideoCapture(join(ROOT_PATH, VIDEO_FILENAME))
+
+    if VIDEO_FILENAME == "":
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_FPS, 120)
 
     print("Début de l'enregistrement")
     print(f"FPS={cap.get(cv2.CAP_PROP_FPS)}")
@@ -128,11 +127,16 @@ if __name__ == "__main__":
     # == LECTURE DE LA VIDEO
     cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("PingLights", LARGEUR_ECRAN, HAUTEUR_ECRAN)
+
+    prev_time = time.time()
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time)
+        cv2.putText(frame, f"FPS: {fps:.1f}", (frame.shape[1] - 150, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         frame_count+=1
 
         # == DETECTION ET SUIVI DE LA BALLE
