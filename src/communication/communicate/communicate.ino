@@ -1,26 +1,31 @@
+const int LED_PINS[6] = {2, 3, 4, 5, 6, 7};
+
 void setup() {
-  Serial.begin(9600);
-  pinMode(8, OUTPUT);
-  pinMode(9, OUTPUT);
-  pinMode(10, OUTPUT);
+  Serial.begin(115200);
+  for (int i=0; i<6; i++) {
+    pinMode(LED_PINS[i], OUTPUT);
+    digitalWrite(LED_PINS[i], LOW);
+  }
 }
 
 void loop() {
-  if (Serial.available()) {
+  if (Serial.available() > 0) {
     String message = Serial.readStringUntil('\n');
-
-    if (message == "ON") {
-        digitalWrite(8, HIGH);
-        digitalWrite(9, HIGH);
-        digitalWrite(10, HIGH);
-        Serial.println("Leds allumées");
-    }
+    message.trim();
+    Serial.println(message);
 
     if (message == "OFF") {
-        digitalWrite(8, LOW);
-        digitalWrite(9, LOW);
-        digitalWrite(10, LOW);
-        Serial.println("Leds éteintes");
+      for (int i=0; i < 6; i++) {
+        digitalWrite(LED_PINS[i], LOW);
+      }
+    } else if (message.startsWith("Z")) {
+      int zone = message.substring(1).toInt();
+      if (zone >= 1 && zone <= 6) {
+        for (int i=0; i < 6; i++) {
+          digitalWrite(LED_PINS[i], LOW);
+        }
+        digitalWrite(LED_PINS[zone-1], HIGH);
+      }
     }
   }
 }

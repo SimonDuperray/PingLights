@@ -1,47 +1,79 @@
 import cv2
 import numpy as np
+import json
+from os.path import join
 
-def rien(x):
-    pass
+with open("../../config/configuration.json", "r") as f:
+    configuration = json.load(f)
 
-cv2.namedWindow("Calibrage HSV")
-cv2.createTrackbar("H bas", "Calibrage HSV", 5, 179, rien)
-cv2.createTrackbar("H haut", "Calibrage HSV", 25, 179, rien)
-cv2.createTrackbar("S bas", "Calibrage HSV", 150, 255, rien)
-cv2.createTrackbar("S haut", "Calibrage HSV", 255, 255, rien)
-cv2.createTrackbar("V bas", "Calibrage HSV", 150, 255, rien)
-cv2.createTrackbar("V haut", "Calibrage HSV", 255, 255, rien)
+ROOT_PATH = configuration["root_path"]
+VIDEO_FILENAME = configuration["video_filename"]
 
-cap = cv2.VideoCapture(rf"/resources/pov_rebond_normal_1.mp4")
+cap = cv2.VideoCapture(join(ROOT_PATH, VIDEO_FILENAME))
+video_fps = cap.get(cv2.CAP_PROP_FPS)
+delay = int(1000 / video_fps) if video_fps > 0 else 33
+
+# Une seule fenêtre pour tout
+cv2.namedWindow("Calibration", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Calibration", 1280, 800)
+
+cv2.createTrackbar("H bas",  "Calibration", 0,   180, lambda x: None)
+cv2.createTrackbar("S bas",  "Calibration", 0,   255, lambda x: None)
+cv2.createTrackbar("V bas",  "Calibration", 200, 255, lambda x: None)
+cv2.createTrackbar("H haut", "Calibration", 180, 180, lambda x: None)
+cv2.createTrackbar("S haut", "Calibration", 80,  255, lambda x: None)
+cv2.createTrackbar("V haut", "Calibration", 255, 255, lambda x: None)
 
 while True:
     ret, frame = cap.read()
     if not ret:
-        # Relancer la vidÃ©o en boucle
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         continue
 
-    h_bas = cv2.getTrackbarPos("H bas", "Calibrage HSV")
-    h_haut = cv2.getTrackbarPos("H haut", "Calibrage HSV")
-    s_bas = cv2.getTrackbarPos("S bas", "Calibrage HSV")
-    s_haut = cv2.getTrackbarPos("S haut", "Calibrage HSV")
-    v_bas = cv2.getTrackbarPos("V bas", "Calibrage HSV")
-    v_haut = cv2.getTrackbarPos("V haut", "Calibrage HSV")
+    h_bas  = cv2.getTrackbarPos("H bas",  "Calibration")
+    s_bas  = cv2.getTrackbarPos("S bas",  "Calibration")
+    v_bas  = cv2.getTrackbarPos("V bas",  "Calibration")
+    h_haut = cv2.getTrackbarPos("H haut", "Calibration")
+    s_haut = cv2.getTrackbarPos("S haut", "Calibration")
+    v_haut = cv2.getTrackbarPos("V haut", "Calibration")
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     masque = cv2.inRange(hsv,
-                         np.array([h_bas, s_bas, v_bas]),
-                         np.array([h_haut, s_haut, v_haut]))
+        np.array([h_bas, s_bas, v_bas]),
+        np.array([h_haut, s_haut, v_haut])
+    )
 
-    cv2.imshow("Original", frame)
-    cv2.imshow("Calibrage HSV", masque)
+    # Convertit le masque en BGR pour pouvoir le coller à côté
+    masque_bgr = cv2.cvtColor(masque, cv2.COLOR_GRAY2BGR)
 
-    key = cv2.waitKey(30)
+    # Redimensionne les deux à la même hauteur
+    h = 600
+    ratio = h / frame.shape[0]
+    w = int(frame.shape[1] * ratio)
+    frame_resized = cv2.resize(frame, (w, h))
+    masque_resized = cv2.resize(masque_bgr, (w, h))
+
+    # Affiche les valeurs
+    cv2.putText(frame_resized, f"HSV bas:  [{h_bas}, {s_bas}, {v_bas}]",
+                (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(frame_resized, f"HSV haut: [{h_haut}, {s_haut}, {v_haut}]",
+                (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(frame_resized, "S=sauvegarder  Q=quitter",
+                (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
+
+    # Colle frame et masque côte à côte
+    combined = np.hstack([frame_resized, masque_resized])
+    cv2.imshow("Calibration", combined)
+
+    key = cv2.waitKey(delay) & 0xFF
     if key == ord('q'):
-        print(f"\n Valeurs HSV Ã  copier")
-        print(f"HSV_BAS  = np.array([{h_bas}, {s_bas}, {v_bas}])")
-        print(f"HSV_HAUT = np.array([{h_haut}, {s_haut}, {v_haut}])")
         break
+    elif key == ord('s'):
+        configuration["hsv_bas"]  = [h_bas, s_bas, v_bas]
+        configuration["hsv_haut"] = [h_haut, s_haut, v_haut]
+        with open("../../config/configuration.json", "w") as f:
+            json.dump(configuration, f, indent=2)
+        print(f"Sauvegardé ! HSV bas={[h_bas, s_bas, v_bas]}, haut={[h_haut, s_haut, v_haut]}")
 
 cap.release()
 cv2.destroyAllWindows()

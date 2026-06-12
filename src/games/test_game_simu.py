@@ -209,11 +209,11 @@ while True:
             if (y2 - y1) > SEUIL_REBOND and (y3 - y2) < -SEUIL_REBOND:
                 if frame_count - dernier_rebond_frame > DELAI_MIN_FRAMES:
                     rebond_pos = positions[-2]
-                    rebonds.append(rebond_pos)
                     dernier_rebond_frame = frame_count
 
                     x_cm, y_cm = pixels_vers_cm(rebond_pos[0], rebond_pos[1], H)
                     zone_rebond = get_zone(x_cm, y_cm)
+                    rebonds.append((rebond_pos, zone_rebond))
                     print(f"Rebond détecté en zone {zone_rebond}")
 
                     if game.game_active:
@@ -223,9 +223,9 @@ while True:
         for i in range(1, len(positions)):
             cv2.line(frame, positions[i - 1], positions[i], (255, 0, 0), 2)
 
-        for r in rebonds[-5:]:
+        for r, z in rebonds[-5:]:
             cv2.circle(frame, r, 8, (0, 0, 255), -1)
-            cv2.putText(frame, "REBOND", (r[0] + 10, r[1]),
+            cv2.putText(frame, f"REBOND_{z}", (r[0] + 10, r[1]),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
     # == FIN DE PARTIE SI TEMPS ECOULE
