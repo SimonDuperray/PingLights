@@ -141,7 +141,7 @@ if __name__ == "__main__":
         cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
         # cv2.resizeWindow("PingLights", 960, 540)
 
-    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    video_fps = cap.get(cv2.CAP_PROP_FPS) if VIDEO_FILENAME != "" else 120
     frame_duration = 1.0 / video_fps
 
     prev_time = time.time()
@@ -271,7 +271,6 @@ if __name__ == "__main__":
 
         elapsed_time = time.time() - frame_start
         remaining = frame_duration - elapsed_time
-        print(elapsed_time, remaining)
         wait_ms = max(1, int(remaining * 1000))
         if cv2.waitKey(wait_ms) & 0xFF == ord('q'):
             break
