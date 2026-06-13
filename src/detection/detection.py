@@ -65,6 +65,15 @@ if __name__ == "__main__":
     COINS_TABLE_PIXELS = np.array(calibration_data["coins_table_pixels"], dtype=np.float32)
     H, _ = cv2.findHomography(COINS_TABLE_PIXELS, COINS_TABLE_REELS)
     H_inv = np.linalg.inv(H)
+    nombre_rebonds_reels = {
+        "CAMERA_1.mp4": 27,
+        "CAMERA_2.mp4": 25,
+        "TELEPHONE_1.mp4": 16,
+        "TELEPHONE_2.mp4": 41
+    }
+    nombre_rebonds_observes = 0
+    nombre_rebonds_attendus = nombre_rebonds_reels[VIDEO_FILENAME] if VIDEO_FILENAME in nombre_rebonds_reels.keys() else 0
+    print(f"{nombre_rebonds_attendus} rebonds attendus pour la vidéo {VIDEO_FILENAME}.")
 
     # == DECLARATION DES FONCTIONS UTILITAIRES
     def pixels_vers_cm(x_pixels, y_pixels, homography):
@@ -243,6 +252,7 @@ if __name__ == "__main__":
                 rebond_pos, zone = resultat
                 rebonds.append((rebond_pos, zone))
                 dernier_rebond_frame = frame_count
+                nombre_rebonds_observes+=1
                 print(f"Rebond détecté en zone {zone} ({len(traj)} points)")
             positions.clear()
 
@@ -261,9 +271,13 @@ if __name__ == "__main__":
 
         elapsed_time = time.time() - frame_start
         remaining = frame_duration - elapsed_time
+        print(elapsed_time, remaining)
         wait_ms = max(1, int(remaining * 1000))
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(wait_ms) & 0xFF == ord('q'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
+    win_rate = round(nombre_rebonds_observes * 100 / nombre_rebonds_attendus, 2)
+    print(f"Winrate: {win_rate}%, ({nombre_rebonds_observes}/{nombre_rebonds_attendus})")
