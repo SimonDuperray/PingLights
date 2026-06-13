@@ -69,7 +69,10 @@ if __name__ == "__main__":
         "CAMERA_1.mp4": 27,
         "CAMERA_2.mp4": 25,
         "TELEPHONE_1.mp4": 16,
-        "TELEPHONE_2.mp4": 41
+        "TELEPHONE_2.mp4": 41,
+        "TEL_1.mp4": 35,
+        "TEL_2.mp4": 31,
+        "TEL_3.mp4": 54
     }
     nombre_rebonds_observes = 0
     nombre_rebonds_attendus = nombre_rebonds_reels[VIDEO_FILENAME] if VIDEO_FILENAME in nombre_rebonds_reels.keys() else 0
@@ -116,7 +119,6 @@ if __name__ == "__main__":
 
         direction_avant = traj[idx_min][1] - traj[idx_min - 1][1]
         direction_apres = traj[idx_min + 1][1] - traj[idx_min][1]
-
         if direction_avant > SEUIL_REBOND and direction_apres < -SEUIL_REBOND:
             if frame_count - dernier_rebond_frame > DELAI_MIN_FRAMES:
                 rebond_pos = traj[idx_min]
@@ -131,7 +133,7 @@ if __name__ == "__main__":
         cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
     else:
         cap = cv2.VideoCapture(join(ROOT_PATH, VIDEO_FILENAME))
-        #cap.set(cv2.CAP_PROP_FPS, 120)
+        cap.set(cv2.CAP_PROP_FPS, 60)
 
     print("Début de l'enregistrement")
     print(f"FPS={cap.get(cv2.CAP_PROP_FPS)}")
@@ -139,7 +141,7 @@ if __name__ == "__main__":
 
     if MODE_DEBUG:
         cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow("PingLights", 960, 540)
+        cv2.resizeWindow("PingLights", 960, 540)
 
     video_fps = cap.get(cv2.CAP_PROP_FPS) if VIDEO_FILENAME != "" else 120
     frame_duration = 1.0 / video_fps
@@ -195,7 +197,9 @@ if __name__ == "__main__":
         masque_roi = np.zeros_like(masque)
         cv2.fillPoly(masque_roi, [np.array(COINS_TABLE_PIXELS, dtype=np.int32)], 255)
         masque = cv2.bitwise_and(masque, masque_roi)
-        cv2.imshow("Masque", masque)
+
+        if MODE_DEBUG:
+            cv2.imshow("Masque", masque)
 
         contours, _ = cv2.findContours(masque, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = [c for c in contours if AIRE_MIN < cv2.contourArea(c) < AIRE_MAX]
