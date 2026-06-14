@@ -39,11 +39,10 @@ if __name__ == "__main__":
         [LARGEUR_TABLE, HAUTEUR_TABLE],
         [0, HAUTEUR_TABLE]
     ], dtype=np.float32)
-
     HSV_BAS = np.array([HSV_BAS[0], HSV_BAS[1], HSV_BAS[2]])
     HSV_HAUT = np.array([HSV_HAUT[0], HSV_HAUT[1], HSV_HAUT[2]])
 
-    # == CALIBRATION DOIT ETRE FAITE AUPARAVANT
+    # == LA CALIBRATION DOIT ETRE FAITE AUPARAVANT
     if not os.path.exists(CALIBRATION_FILENAME):
         print("Veuillez effectuer la calibration avant de lancer ce script.")
         exit()
@@ -57,15 +56,14 @@ if __name__ == "__main__":
     frame_count = 0
     positions = deque(maxlen=HISTORIQUE)
     rebonds = []
-    ZONES_INTERDITES = [
+    zones_interdites = [
         np.array(zone, dtype=np.int32).reshape((-1, 1, 2))
         for zone in calibration_data["zones_interdites"]
     ]
     frames_sans_balle = 0
-    COINS_TABLE_PIXELS = np.array(calibration_data["coins_table_pixels"], dtype=np.float32)
-    H, _ = cv2.findHomography(COINS_TABLE_PIXELS, COINS_TABLE_REELS)
+    coins_table_pixels = np.array(calibration_data["coins_table_pixels"], dtype=np.float32)
+    H, _ = cv2.findHomography(coins_table_pixels, COINS_TABLE_REELS)
     H_inv = np.linalg.inv(H)
-
     nombre_rebonds_reels = {
         "CAMERA_1.mp4": 27,
         "CAMERA_2.mp4": 25,
@@ -168,11 +166,11 @@ if __name__ == "__main__":
         debug_overlay = np.zeros_like(first_frame)
 
         # Zones interdites
-        for zone in ZONES_INTERDITES:
+        for zone in zones_interdites:
             cv2.polylines(debug_overlay, [zone], True, (255, 255, 0), 2)
 
         # ROI Table
-        cv2.polylines(debug_overlay, [np.array(COINS_TABLE_PIXELS, dtype=np.int32)], True, (0, 255, 255), 2)
+        cv2.polylines(debug_overlay, [np.array(coins_table_pixels, dtype=np.int32)], True, (0, 255, 255), 2)
 
         # Grille verticale
         for col in range(1, 3):
@@ -217,7 +215,7 @@ if __name__ == "__main__":
         masque = cv2.dilate(masque, kernel, iterations=3)
 
         masque_roi = np.zeros_like(masque)
-        cv2.fillPoly(masque_roi, [np.array(COINS_TABLE_PIXELS, dtype=np.int32)], 255)
+        cv2.fillPoly(masque_roi, [np.array(coins_table_pixels, dtype=np.int32)], 255)
         masque = cv2.bitwise_and(masque, masque_roi)
 
         contours, _ = cv2.findContours(masque, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -247,7 +245,7 @@ if __name__ == "__main__":
 
             position_valide = True
 
-            if est_dans_zone_interdite(x, y, ZONES_INTERDITES):
+            if est_dans_zone_interdite(x, y, zones_interdites):
                 position_valide = False
 
             if position_valide and len(positions) > 0:
