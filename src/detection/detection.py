@@ -2,10 +2,14 @@ import json
 import os.path
 import time
 
+import matplotlib.pyplot as plt
+
 import cv2
 import numpy as np
 from collections import deque
 from os.path import join
+
+#from detection.strategies import StrategyFallback, StrategyTempsReel, StrategyCombo
 
 if __name__ == "__main__":
     # == LECTURE DU FICHIER DE CONFIGURATION
@@ -75,8 +79,16 @@ if __name__ == "__main__":
         "TEL_3.mp4": 54
     }
     nombre_rebonds_observes = 0
-    nombre_rebonds_attendus = nombre_rebonds_reels[VIDEO_FILENAME] if VIDEO_FILENAME in nombre_rebonds_reels.keys() else 0
+    nombre_rebonds_attendus = nombre_rebonds_reels.get(VIDEO_FILENAME, 0)
     print(f"{nombre_rebonds_attendus} rebonds attendus pour la vidéo {VIDEO_FILENAME}.")
+    """STRATEGIES = {
+        "temps_reel": StrategyTempsReel,
+        "fallback": StrategyFallback,
+        "combo": StrategyCombo
+    }
+    strategie = STRATEGIES[configuration["strategie_rebond"]](
+        SEUIL_REBOND, DELAI_MIN_FRAMES, SEUIL_PERTE_BALLE
+    )"""
 
     # == DECLARATION DES FONCTIONS UTILITAIRES
     def pixels_vers_cm(x_pixels, y_pixels, homography):
@@ -102,18 +114,36 @@ if __name__ == "__main__":
                 return True
         return False
 
-    def analyser_trajectoire(traj, frame_count, dernier_rebond_frame):
-        """
-        Analyse une trajectoire complète pour détecter un rebond.
-        Retourne (rebond_pos, zone) ou None.
-        """
+
+    def analyser_trajectoire_simplifiee(traj, frame_count, dernier_rebond_frame):
         if len(traj) < 3:
             return None
 
-        # Cherche le point le plus bas (y max en pixels) dans toute la trajectoire
+        if frame_count - dernier_rebond_frame <= DELAI_MIN_FRAMES:
+            return None
+
         idx_min = max(range(len(traj)), key=lambda i: traj[i][1])
 
-        # Le point de rebond ne doit pas être au bord de la trajectoire
+        if not (1 <= idx_min <= len(traj) - 2):
+            return None
+
+        descend_avant = traj[idx_min][1] > traj[0][1]
+        remonte_apres = traj[-1][1] < traj[idx_min][1]
+
+        if descend_avant and remonte_apres:
+            rebond_pos = traj[idx_min]
+            x_cm, y_cm = pixels_vers_cm(rebond_pos[0], rebond_pos[1], H)
+            zone = get_zone(x_cm, y_cm)
+            return rebond_pos, zone
+
+        return None
+
+    def analyser_trajectoire(traj, frame_count, dernier_rebond_frame):
+        if len(traj) < 3:
+            return None
+
+        idx_min = max(range(len(traj)), key=lambda i: traj[i][1])
+
         if not (1 <= idx_min <= len(traj) - 2):
             return None
 
@@ -139,13 +169,20 @@ if __name__ == "__main__":
     print(f"FPS={cap.get(cv2.CAP_PROP_FPS)}")
     print(f"Résolution : {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
 
+
+    curr_aire_max = 0
+
     if MODE_DEBUG:
         cv2.namedWindow("PingLights", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("PingLights", 960, 540)
 
+        cv2.namedWindow("Masque", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Masque", 960, 540)
+
     video_fps = cap.get(cv2.CAP_PROP_FPS) if VIDEO_FILENAME != "" else 120
     frame_duration = 1.0 / video_fps
 
+    elapsed_times = []
     prev_time = time.time()
     while True:
         frame_start = time.time()
@@ -161,11 +198,14 @@ if __name__ == "__main__":
             fps = 1 / (curr_time - prev_time)
             prev_time = curr_time
             cv2.putText(frame, f"FPS: {fps:.1f}", (frame.shape[1] - 150, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
             # == AFFICHAGE DES ZONES INTERDITES
             for zone in ZONES_INTERDITES:
                 cv2.polylines(frame, [zone], True, (255, 255, 0), 2)
+
+            # == AFFICHAGE DU ROI TABLE
+            cv2.polylines(frame, [np.array(COINS_TABLE_PIXELS, dtype=np.int32)], True, (0, 255, 255), 2)
 
             # == AFFICHAGE DE LA GRILLE
             for col in range(1, 3):
@@ -195,6 +235,7 @@ if __name__ == "__main__":
         masque = cv2.dilate(masque, kernel, iterations=3)
 
         masque_roi = np.zeros_like(masque)
+        masque_avant_roi = masque.copy()
         cv2.fillPoly(masque_roi, [np.array(COINS_TABLE_PIXELS, dtype=np.int32)], 255)
         masque = cv2.bitwise_and(masque, masque_roi)
 
@@ -210,14 +251,18 @@ if __name__ == "__main__":
 
         for contour in contours:
             aire = cv2.contourArea(contour)
+            if aire > curr_aire_max:
+                curr_aire_max = aire
             perimetre = cv2.arcLength(contour, True)
             if perimetre == 0:
                 continue
             circularite = (4 * np.pi * aire) / (perimetre ** 2)
+            # print(f"    aire={int(aire)}, circ={circularite:.2f}")
             if circularite > CIRCULARITE_MIN and circularite > meilleure_circularite:
                 meilleure_circularite = circularite
                 meilleur_contour = contour
                 meilleure_aire = aire
+
 
         balle_detectee = False
         if meilleur_contour is not None:
@@ -240,6 +285,16 @@ if __name__ == "__main__":
                 balle_detectee = True
                 frames_sans_balle = 0
                 positions.append((x, y))
+
+                # == ANALYSE EN TEMPS REEL
+                resultat = analyser_trajectoire_simplifiee(list(positions), frame_count, dernier_rebond_frame)
+                if resultat is not None:
+                    rebond_pos, zone = resultat
+                    rebonds.append((rebond_pos, zone))
+                    dernier_rebond_frame = frame_count
+                    nombre_rebonds_observes += 1
+                    print(f"[TEMPS REEL] Rebond détecté en zone {zone} ({len(positions)} points)")
+
                 if MODE_DEBUG:
                     cv2.circle(frame, (x, y), rayon, (0, 255, 0), 2)
                     cv2.putText(frame, f"Balle | aire:{int(meilleure_aire)} circ:{meilleure_circularite:.2f}",
@@ -248,16 +303,16 @@ if __name__ == "__main__":
         if not balle_detectee:
             frames_sans_balle += 1
 
-        # == ANALYSE DE LA TRAJECTOIRE QUAND LA BALLE EST PERDUE
+        # == ANALYSE A LA PERTE DE BALLE
         if frames_sans_balle == SEUIL_PERTE_BALLE:
             traj = list(positions)
-            resultat = analyser_trajectoire(traj, frame_count, dernier_rebond_frame)
+            resultat = analyser_trajectoire_simplifiee(traj, frame_count, dernier_rebond_frame)
             if resultat is not None:
                 rebond_pos, zone = resultat
                 rebonds.append((rebond_pos, zone))
                 dernier_rebond_frame = frame_count
-                nombre_rebonds_observes+=1
-                print(f"Rebond détecté en zone {zone} ({len(traj)} points)")
+                nombre_rebonds_observes += 1
+                print(f"[PERTE BALLE] Rebond détecté en zone {zone} ({len(traj)} points)")
             positions.clear()
 
         if MODE_DEBUG:
@@ -274,13 +329,17 @@ if __name__ == "__main__":
             cv2.imshow("PingLights", frame)
 
         elapsed_time = time.time() - frame_start
-        remaining = frame_duration - elapsed_time
-        wait_ms = max(1, int(remaining * 1000))
-        if cv2.waitKey(wait_ms) & 0xFF == ord('q'):
+        elapsed_times.append(elapsed_time)
+        wait = max(1, int(1000/video_fps) - int(elapsed_time*1000))
+        if cv2.waitKey(wait) & 0xFF == ord('q'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
 
-    win_rate = round(nombre_rebonds_observes * 100 / nombre_rebonds_attendus, 2)
-    print(f"Winrate: {win_rate}%, ({nombre_rebonds_observes}/{nombre_rebonds_attendus})")
+    print(f"[LOG] - Average process time per frame: {round((sum(elapsed_times) / len(elapsed_times)*1000), 2)} ms")
+    if nombre_rebonds_attendus > 0:
+        win_rate = round(nombre_rebonds_observes * 100 / nombre_rebonds_attendus, 2)
+        print(f"Winrate: {win_rate}%, ({nombre_rebonds_observes}/{nombre_rebonds_attendus})")
+    else:
+        print(f"Rebonds détectés : {nombre_rebonds_observes}")
