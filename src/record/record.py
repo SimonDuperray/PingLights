@@ -10,6 +10,9 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv2.CAP_PROP_FPS, 120)
 
+print(f"FPS obtenu : {cap.get(cv2.CAP_PROP_FPS)}")
+print(f"Résolution : {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
+
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 out = None
 recording = False
